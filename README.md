@@ -31,11 +31,11 @@ Organize your MIMIC-CXR dataset in the `data/` directory:
 ```
 data/
 ├── mimic_cxr/
+│   ├── files/
 │   ├── images/
-│   ├── reports/
 │   └── metadata.csv
 └── mimic_iv/
-    └── patient_history/
+    └── .csv
 ```
 
 ### Step 3: 🎯 Training Pipeline
@@ -45,7 +45,7 @@ data/
 Train the multimodal connector to align visual features with language model embeddings:
 
 ```bash
-python train_stage1_gemma.py
+python train_stage1.py
 ```
 
 **What this does:**
@@ -53,7 +53,7 @@ python train_stage1_gemma.py
 - ✅ Aligns image features with Gemma embeddings
 - ✅ Saves connector weights to `checkpoints/`
 
-**Expected output:** Stage 1 checkpoint in `checkpoints/stage1_best.pt`
+**Expected output:** Stage 1 checkpoint in `checkpoints/stage1/best_checkpoint.pt`
 
 ---
 
@@ -62,7 +62,7 @@ python train_stage1_gemma.py
 Fine-tune the Gemma language model for report generation:
 
 ```bash
-python train_stage2_gemma.py
+python train_stage2.py
 ```
 
 **What this does:**
@@ -71,7 +71,7 @@ python train_stage2_gemma.py
 - ✅ Fine-tunes Gemma with QLoRA
 - ✅ Optimizes for BLEU-4 scores
 
-**Expected output:** Final model in `checkpoints/gemma_2b_best.pt`
+**Expected output:** Final model in `checkpoints/stage2/best_checkpoint.pt`
 
 ---
 
@@ -84,9 +84,6 @@ Generate reports using ensemble predictions:
 ```bash
 # For Gemma-2B model
 python generate_report_gemma_2b_ensemble.py
-
-# For Gemma-4B model (higher quality)
-python generate_report_gemma_4b_ensemble.py
 ```
 
 #### **Option B: Manual Mode**
@@ -96,9 +93,6 @@ Generate reports with manual control:
 ```bash
 # For Gemma-2B model
 python generate_report_gemma_2b_manual.py
-
-# For Gemma-4B model
-python generate_report_gemma_4b_manual.py
 ```
 
 **Output location:** Generated reports are saved to `report/` or `report_final/`
@@ -110,26 +104,28 @@ python generate_report_gemma_4b_manual.py
 Run evaluation to compute metrics:
 
 ```bash
-python eval.py --checkpoint checkpoints/gemma_2b_best.pt
+python eval.py --report genrate_report.jsonl
 ```
 
 **Metrics computed:**
 - BLEU-1, BLEU-2, BLEU-3, BLEU-4
-- ROUGE-L
 - METEOR
+- ROUGE-L
+- CIDEr
+- CheXpert_F1,CheXpert_P,CheXpert_R
 
-**Results location:** `eval_results/metrics.json`
+**Results location:** `eval_results/evaluation_summary.csv`
 
 ---
 
 ## 🔧 Additional Tools
 
-### Knowledge Graph Preprocessing
+### Knowledge Graph Visualization
 
 Preprocess knowledge graph features for faster loading:
 
 ```bash
-python kg_bridge.py --preprocess
+python run_visualization.py
 ```
 
 ### Report Quality Evaluation
@@ -139,7 +135,6 @@ Evaluate specific generated reports:
 ```bash
 python report_evaluator.py --report_dir report_final/
 ```
-
 ---
 
 ## ⚙️ Configuration Tips
@@ -149,29 +144,10 @@ python report_evaluator.py --report_dir report_final/
 Reduce batch size and use gradient accumulation:
 
 ```bash
-python train_stage2_gemma.py \
+python train_stage2.py \
   --batch_size 2 \
   --gradient_accumulation_steps 8
 ```
-
-### 💡 For Faster Training
-
-Use Gemma-2B instead of Gemma-4B:
-
-```bash
-python train_stage2_gemma.py --model_size 2b
-```
-
-### 💡 For Better Quality
-
-Use Gemma-4B with ensemble generation:
-
-```bash
-python train_stage2_gemma.py --model_size 4b
-python generate_report_gemma_4b_ensemble.py
-```
-
----
 
 ## 📁 Key Directories
 
@@ -184,4 +160,3 @@ python generate_report_gemma_4b_ensemble.py
 ├── report_final/      # ✅ Final curated reports
 └── visual/            # 👁️ Visual feature processing
 ```
-
